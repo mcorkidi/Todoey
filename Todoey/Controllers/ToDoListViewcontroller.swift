@@ -9,7 +9,7 @@
 import UIKit
 import RealmSwift
 
-class ToDoListViewcontroller: UITableViewController {
+class ToDoListViewcontroller: SwipeTableViewController {
 
     var  todoItems:Results<Item>?
     let realm = try! Realm()
@@ -27,7 +27,7 @@ class ToDoListViewcontroller: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
+//        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
         
     }
@@ -40,14 +40,13 @@ class ToDoListViewcontroller: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         if let item = todoItems?[indexPath.row] {
             cell.textLabel?.text = item.title
-            
+
             //Ternary operator --  value = condition ? ValueIfTrue : ValueIfFalse
-            
-            
+
             cell.accessoryType = item.done ? .checkmark : .none  // ?makes condition if true, first, not true second option
         } else {
             cell.textLabel?.text = "No items added"
@@ -79,6 +78,19 @@ class ToDoListViewcontroller: UITableViewController {
     
     //MARK - Add new items
     
+    func saveItem(newItem: Item) {
+        if let currentCategory = self.selectedCategory {
+        do {
+            try self.realm.write {
+                currentCategory.items.append(newItem)
+                }
+            } catch {
+                print("Error saving item \(error)")
+            }
+        }
+        tableView.reloadData()
+    }
+    
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
@@ -89,20 +101,14 @@ class ToDoListViewcontroller: UITableViewController {
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //What will happen when user clicks on add item bnutton on our UIAlert
             
-            if let currentCategory = self.selectedCategory {
-                do {
-                    try self.realm.write {
-                        let newItem = Item()
-                        newItem.title = textField.text!
-                        newItem.dateCreated = Date()
-                        currentCategory.items.append(newItem)
+            let newItem = Item()
+            newItem.title = textField.text!
+            newItem.dateCreated = Date()
+            self.saveItem(newItem: newItem)
+        
             }
-                } catch {
-                    print("Error saving item \(error)")
-                }
-            }
-            self.tableView.reloadData()
-        }
+        
+        
         
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new item"
@@ -114,7 +120,7 @@ class ToDoListViewcontroller: UITableViewController {
         
         
         present(alert, animated: true, completion: nil)
-        
+
     }
     
     //MARK - Model Manipulation Methods
@@ -127,6 +133,18 @@ class ToDoListViewcontroller: UITableViewController {
 
         tableView.reloadData()
 
+    }
+    //MARK: - Delete Data from Swipe
+    override func updateModel(at indexPath: IndexPath) {
+        if let deleteItem = self.todoItems?[indexPath.row]{
+            do {
+                try self.realm.write {
+                    self.realm.delete(deleteItem)
+                }
+            } catch {
+                print("Error deleting item \(error)")
+            }
+        }
     }
     
 }
